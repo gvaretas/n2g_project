@@ -15,7 +15,7 @@ The second bucket stores consumption files which are uploaded by supplier. Once 
 
 ### Architecture
 
-![alt text](https://github.com/[gvaretas]/[n2g_project]/blob/[master]/image.jpg?raw=true)
+![AWS Architecture](https://github.com/[gvaretas]/[n2g_project]/blob/[master]/iot-stack/IoT-Diagram.png?raw=true)
 
 ### Parameters
 
