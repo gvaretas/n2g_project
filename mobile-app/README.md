@@ -39,6 +39,7 @@ API Gateway receives the REST calls and invokes lambda authorizer. The latter ch
 
 ### Architecture
 
+![AWS Architecture](https://github.com/gvaretas/n2g_project/blob/master/mobile-app/mobile-Diagram.PNG?raw=true)
 
 ## Authors
 
