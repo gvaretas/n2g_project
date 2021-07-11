@@ -1,0 +1,21 @@
+{
+  "name": "authoriser",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node authoriser.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "amazon-cognito-identity-js": "^5.0.4",
+    "aws-sdk": "^2.942.0",
+    "jsonwebtoken": "^8.5.1",
+    "jwk-to-pem": "^2.0.5",
+    "node-fetch": "^2.6.1",
+    "request": "^2.88.2"
+  }
+}
