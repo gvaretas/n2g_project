@@ -1,0 +1,5 @@
+node_modules
+certificates
+new_certificates
+.idea
+.env
