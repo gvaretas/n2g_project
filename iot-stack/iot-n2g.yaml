@@ -1,0 +1,104 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "CloudFormation template for Net2Grid Evaluation Test"
+Parameters:
+  ProjectName:
+    Description: The name of the project
+    Type: String
+  IotTopicName:
+    Description: The name of the IoT RuleName
+    Type: String
+  IotBucketName:
+    Description: The name of the IoT Bucket
+    Type: String
+    Default:  ''
+
+Conditions:
+  S3IoTBucketNameSpecified: !Not [!Equals [!Ref IotBucketName, '']]
+
+Resources:
+  Device:
+    Type: AWS::IoT::Thing
+    Properties:
+      ThingName: !Sub '${ProjectName}-iot-device'
+
+  IotTopicRule:
+    Type: AWS::IoT::TopicRule
+    Properties:
+      RuleName: !Sub '${ProjectName}_send_to_s3bucket'
+      TopicRulePayload:
+        Description: 'Send IoT Device data in raw format to S3 bucket'
+        AwsIotSqlVersion: '2016-03-23'
+        RuleDisabled: 'false'
+        Sql: SELECT * FROM 'device/+'
+        Actions:
+          - S3:
+              BucketName: 
+                Ref: IotBucketName
+              RoleArn:  !GetAtt IotTopicRuleRole.Arn
+              Key: '${topic(2)}/${parse_time("yyyyMMdd", timestamp(), "EET")}/${timestamp()}.json'
+  
+  IotTopicRuleRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - 'iot.amazonaws.com'
+            Action:
+              - 'sts:AssumeRole'
+      Path: /
+      Policies:
+        - PolicyName: 'IotTopicRulePolicy'
+          PolicyDocument:
+            Version:  '2012-10-17'
+            Statement:
+              Effect: Allow
+              Action:
+                - s3:PutObject
+              Resource:
+                - !GetAtt IotBucket.Arn
+  IotBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !If
+        - S3IoTBucketNameSpecified
+        - !Ref IotBucketName
+        - !Sub 'aws-s3-iot-${AWS::AccountId}-${AWS::Region}'
+
+  SupplierBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub '${AWS::AccountId}-supplier-consums'
+      NotificationConfiguration:
+        QueueConfigurations:
+          - Event: s3:ObjectCreated:*
+            Queue: !GetAtt AnalyticsMetadataQueue.Arn
+    DependsOn:  SQSQueuePolicy
+
+
+  AnalyticsMetadataQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      VisibilityTimeout: 30
+      MessageRetentionPeriod: 25200
+      QueueName: !Sub '${ProjectName}-analytics-queue'
+
+  SQSQueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: '*'
+            Action: SQS:SendMessage
+            Resource: '*'
+            Condition:
+              ArnLike:
+                aws:SourceArn:  !Sub 'arn:aws:s3:::${AWS::AccountId}-supplier-consums'
+      Queues: 
+        - Ref: AnalyticsMetadataQueue
