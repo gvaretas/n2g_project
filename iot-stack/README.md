@@ -23,6 +23,8 @@ The second bucket stores consumption files which are uploaded by supplier. Once 
 
 * This template creates the IoT thing. Still the administrator is responsible for setting up the policies as well as providing the certificates to IoT Devices. 
 
+* In iot-device-app folder, there is a script written in nodejs which connects the iot-device with the AWS IoT Core Service. 
+
 ## Authors
 
 Contributors names and contact info
@@ -34,6 +36,3 @@ Contributors names and contact info
 * 0.1
     * Initial Release
 
-## License
-
-This project is licensed under the [NAME HERE] License - see the LICENSE.md file for details
