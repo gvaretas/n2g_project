@@ -13,6 +13,10 @@ The second bucket stores consumption files which are uploaded by supplier. Once 
 
 ## Getting Started
 
+### Architecture
+
+![alt text](https://github.com/[gvaretas]/[n2g_project]/blob/[master]/image.jpg?raw=true)
+
 ### Parameters
 
 * ProjectName 
