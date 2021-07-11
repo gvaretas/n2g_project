@@ -5,8 +5,8 @@ require('dotenv').config();
 
 let sensor_measurements = {
     "metadata": {
-        "gateway_ip"  : "3108432946",
-        "labelpartner_id": "npower"
+        "gateway_ip"  : "23412455",
+        "labelpartner_id": "WncECNxn"
     },
     "results" : [
         {
