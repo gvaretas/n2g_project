@@ -1,0 +1,217 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "CloudFormation serverless template for Net2Grid Evaluation Test"
+
+Parameters:
+  Project:
+    Description: Used as a prefix for project resources.
+    Type: String
+    Default: N2G_project    
+
+  S3Bucket:
+    Description: Utility Bucket
+    Type: String
+    Default: n2g-utility
+
+
+Resources:
+  DynamoDbRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: lambdaPolicy
+          PolicyDocument:
+            Version:  2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'dynamodb:PutItem'
+                  - 'dynamodb:UpdateItem'
+                  - 'dynamodb:GetItem'
+                  - 'dynamodb:DeleteItem'
+                Resource: !GetAtt
+                  - Clients
+                  - Arn
+  
+  Clients:
+    Type: 'AWS::DynamoDB::Table'
+    Properties:
+      TableName: !Ref Project
+      AttributeDefinitions:
+        - AttributeName: clientID
+          AttributeType: S
+      KeySchema:
+        - AttributeName: clientID
+          KeyType: HASH
+      ProvisionedThroughput:
+        ReadCapacityUnits: 1
+        WriteCapacityUnits: 1
+
+  CRUDFunction:
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      FunctionName: !Sub '${Project}-profiler'
+      Handler: index.handler
+      MemorySize: 128
+      Runtime: nodejs14.x
+      Role: !GetAtt
+        - DynamoDbRole
+        - Arn
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref Project
+      Code:
+        S3Bucket: !Ref S3Bucket
+        S3Key: function.zip
+
+  CRUDFunctionPermissions:
+    Type: 'AWS::Lambda::Permission'
+    Properties:
+      Action: 'lambda:InvokeFunction'
+      FunctionName: !Ref CRUDFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Join
+      - ''
+      - - 'arn:aws:execute-api:'
+        - !Ref 'AWS::Region'
+        - ':'
+        - !Ref 'AWS::AccountId'
+        - ':'
+        - !Ref AppApi
+        - /*
+
+  AppApi:
+    Type: 'AWS::ApiGatewayV2::Api'
+    Properties:
+      Name: !Ref Project
+      Description: API used for table operations
+      ProtocolType: HTTP
+
+  APIIntegration:
+    Type: 'AWS::ApiGatewayV2::Integration'
+    Properties:
+      ApiId: !Ref AppApi
+      Description: Lambda Integration
+      PayloadFormatVersion: '2.0'
+      ConnectionType: INTERNET
+      IntegrationUri: !Sub  'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${CRUDFunction.Arn}/invocations'
+      IntegrationType: AWS_PROXY
+
+  APIGetRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref AppApi
+      RouteKey: 'ANY /clients/{clientID}'
+      AuthorizationType:  CUSTOM
+      AuthorizerId: !Ref APIAuthorizer
+      Target: !Join
+      - /
+      - - integrations
+        - !Ref APIIntegration
+
+  APIAuthorizer:
+    Type: AWS::ApiGatewayV2::Authorizer
+    Properties:
+      Name: LambdaAuthorizer
+      ApiId: !Ref AppApi
+      AuthorizerType: REQUEST
+      AuthorizerUri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${LambdaAuth.Arn}/invocations'
+      AuthorizerPayloadFormatVersion: '2.0'
+      IdentitySource: '$request.header.Authorization'
+
+  APIInvokeAuthRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - apigateway.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Policies:
+        - PolicyName: apigatewayPolicy
+          PolicyDocument:
+            Version:  2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'lambda:InvokeFunction'
+                Resource: '*'
+
+
+  Stage:
+    Type: AWS::ApiGatewayV2::Stage
+    Properties:
+      StageName: '$default'
+      Description: 'API Version 1'
+      ApiId: !Ref AppApi
+      AutoDeploy: true
+
+  LambdaAuthRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+
+  LambdaAuth:
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      FunctionName: !Sub '${Project}-authorizer'
+      Handler: index.handler
+      MemorySize: 128
+      Runtime: nodejs14.x
+      Role: !GetAtt
+        - LambdaAuthRole
+        - Arn
+      Environment:
+        Variables:
+          API_ID: !Ref AppApi
+          AWS_ACCOUNT_ID: !Ref AWS::AccountId
+          
+      Code:
+        S3Bucket: !Ref S3Bucket
+        S3Key: authorizer.zip
+
+  UserPool:
+    Type: 'AWS::Cognito::UserPool'
+    Properties:
+      UserPoolName: !Ref Project
+      UsernameAttributes:
+        - email
+      AdminCreateUserConfig:
+        AllowAdminCreateUserOnly: false
+      Schema:
+        - Name: email
+          Required: true
+          Mutable: false
+          AttributeDataType: String
+        - Name: name
+          Required: true
+          Mutable: false
+          AttributeDataType: String
+        - Name: gender
+          Required: false
+          Mutable: false
+          AttributeDataType: String

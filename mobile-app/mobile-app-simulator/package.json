@@ -1,0 +1,29 @@
+{
+  "name": "net2grid-be",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "start": "nodemon ./bin/www"
+  },
+  "dependencies": {
+    "amazon-cognito-identity-js": "^5.0.3",
+    "aws-sdk": "^2.939.0",
+    "debug": "~2.6.9",
+    "dotenv": "^10.0.0",
+    "express": "~4.16.1",
+    "http-errors": "~1.6.3",
+    "jsonwebtoken": "^8.5.1",
+    "jwk-to-pem": "^2.0.5",
+    "morgan": "~1.9.1",
+    "node-fetch": "^2.6.1",
+    "nodemon": "^2.0.9",
+    "pug": "2.0.0-beta11",
+    "request": "^2.88.2",
+    "verify-cognito-token": "^1.2.4"
+  },
+  "main": "app.js",
+  "devDependencies": {},
+  "author": "",
+  "license": "ISC",
+  "description": ""
+}
