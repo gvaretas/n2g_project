@@ -1,2 +1,2 @@
-# n2g_project
-Repo for n2g project
+# N2G_project
+The current repo consists of two AWS CloudFormation Stacks
